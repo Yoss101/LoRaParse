@@ -516,6 +516,9 @@
                         if (col === 'ts' && val !== null && !isNaN(val)) {
                             const date = new Date(Number(val) * 1000);
                             td.textContent = date.toISOString().replace('T', ' ').substring(0, 19);
+                        } else if (col === 'started_ts' && val !== null && !isNaN(val)) {
+                            const date = new Date(Number(val) * 1000);
+                            td.textContent = date.toISOString().replace('T', ' ').substring(0, 19);
                         } else if (col === 'freq_hz' && val !== null && !isNaN(val)) {
                             td.textContent = (Number(val) / 1000000).toFixed(3) + ' MHz';
                         } else if (col === 'bw_hz' && val !== null && !isNaN(val)) {
