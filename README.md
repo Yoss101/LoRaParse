@@ -15,7 +15,6 @@ This tool opens LoRaScan `.db` or `.sqlite` files, extracts the underlying wideb
 | **Channel Highlights** | Dynamic Spectrum Math | Automatically extracts and flags the Top 3 Quietest and Busiest channels (e.g., 923.4 MHz, 910.6 MHz). |
 | **Band Isolation** | Algorithmic Exclusion | Automatically masks out-of-band repeater noise (902.0–903.25 MHz) from messing up spectrum averages. |
 | **Interactive Grid** | Dynamic Schema Layout | Dynamically adapts its table view arrays to match any LoRaScan table catalog (e.g., `energy`, `runs`). |
-| **Custom Scrollbars** | Themed CSS Injection | Dark-themed UI wrapper layout featuring matched custom thin scrollbars for seamless dataset scrolling. |
 
 ---
 
