@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoRaScan Parser</title>
+    <meta property="og:title" content="Yoss.dev | LoRaScan Parser">
+    <meta property="og:url" content="https://yoss.dev/loraparse/">
+    <meta property="og:description" content="Parse your own site.db from LoRaScan here! 
+        Read more about the project here: https://github.com/Loomwave/lorascan">
+    <meta property="og:type" content="profile">
+
+    <meta name="twitter:card" content="summary">
+    <meta property="twitter:title" content="Yoss.dev | LoRaScan Parser">
+    <meta property="twitter:description" content="Parse your own site.db from LoRaScan here! 
+        Read more about the project here: https://github.com/Loomwave/lorascan">
+    <meta charset="utf-8">
+    <meta name="robots" content="index, nofollow">
+    <meta name="theme-color" content="#0A114D" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            margin: 20px;
+        }
+
+        .controls {
+            background-color: #2d2d2d;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+
+        .summary-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .summary-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .quietest-title {
+            color: #4caf50;
+        }
+
+        .loudest-title {
+            color: #ff6b6b;
+        }
+
+        .summary-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .summary-item {
+            padding: 6px 0;
+            border-bottom: 1px solid #2d2d2d;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        input[type="file"],
+        select {
+            background-color: #3d3d3d;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        input:disabled,
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 50vh;
+            border: 1px solid #444;
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #2d2d2d;
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background-color: #2a2a2a;
+        }
+
+        .json-cell {
+            font-family: monospace;
+            color: #a8ffb2;
+        }
+
+        .status {
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        .loading {
+            font-weight: bold;
+            color: #ff9800;
+        }
+
+        .error-msg {
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #444444;
+            border-radius: 4px;
+            border: 2px solid #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #555555;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #444444 #1e1e1e;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>LoRaScan Database Parser</h2>
+
+    <p>
+        What is <a href="https://github.com/Loomwave/lorascan"
+            style="text-decoration:none; color:green;">LoRaScan?</a><br><br>
+        Lorascan is a long-term LoRa spectrum band scanner and interference analyzer designed for the 902–928 MHz US ISM
+        band.
+        It runs on hardware like a Raspberry Pi or USB-SPI sticks using an actual LoRa radio to capture
+        real-world interference.
+        <br><br>
+        This page only parses .db files <b style="color: Green">LOCALLY</b>! No files are uploaded to this website!
+    </p>
+
+    <div class="controls">
+        <div id="engineStatus" class="loading">Compiling WebAssembly core components...</div>
+        <br>
+        <label for="dbFile" style="display:none;">Select SQLite Database File: </label>
+        <input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3" disabled>
+
+        <label for="tableSelect">Table: </label>
+        <select id="tableSelect" disabled>
+            <option value="">-- Load a database first --</option>
+        </select>
+
+    </div>
+
+    <div class="summary-container">
+        <div class="summary-card">
+            <h3 class="quietest-title">Quietest Frequencies</h3>
+            <ul id="quietestList" class="summary-list">
+                <li style="color:#777;">Awaiting database mount...</li>
+            </ul>
+        </div>
+        <div class="summary-card">
+            <h3 class="loudest-title">Busiest Frequencies</h3>
+            <ul id="busiestList" class="summary-list">
+                <li style="color:#777;">Awaiting database mount...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table id="dataTable">
+            <thead></thead>
+            <tbody>
+                <tr>
+                    <td style="color: #777;">System idle. Mount a database to view data.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let db = null;
+        let SQL = null;
+        let currentPage = 1;
+        const rowsPerPage = 1000;
+        let activeTableName = "";
+
+        function loadEngineScript(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.crossOrigin = "anonymous";
+                script.onload = () => {
+                    resolve();
+                };
+                script.onerror = () => reject(new Error("Failed to load core script from unpkg target path."));
+                document.head.appendChild(script);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const statusIndicator = document.getElementById('engineStatus');
+
+            const jsLibraryUrl = "https://unpkg.com/sql.js";
+
+            loadEngineScript(jsLibraryUrl)
+                .then(() => {
+                    statusIndicator.textContent = "Compiling WebAssembly core components...";
+
+                    const config = {
+                        locateFile: filename => "https://unpkg.com/sql.js/dist/" + filename
+                    };
+
+                    return initSqlJs(config);
+                })
+                .then((sqlModule) => {
+                    SQL = sqlModule;
+                    statusIndicator.textContent = "WASM Database Engine Ready ✓";
+                    statusIndicator.className = "status";
+
+                    statusIndicator.textContent = "Auto-loading site.db file...";
+                    return fetch('site.db');
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Could not find site.db in your project directory (Status: ${response.status})`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    const Uints = new Uint8Array(arrayBuffer);
+                    db = new SQL.Database(Uints);
+
+                    statusIndicator.textContent = "Yoss's site.db loaded";
+
+                    const el = document.getElementById('dbFile');
+                    if (el) el.disabled = false;
+
+                    populateTableDropdown();
+                })
+                .catch((err) => {
+                    statusIndicator.textContent = "Initialization Failed: " + err.message;
+                    statusIndicator.className = "error-msg";
+                    console.error("Engine failure trace logs:", err);
+                });
+        });
+
+        const fileEl = document.getElementById('dbFile');
+        if (fileEl) {
+            fileEl.addEventListener('change', function (e) {
+                const file = e.target.files;
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function () {
+                    try {
+                        const Uints = new Uint8Array(reader.result);
+                        db = new SQL.Database(Uints);
+                        populateTableDropdown();
+                    } catch (err) {
+                        alert("Error mounting database context: " + err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function populateTableDropdown() {
+            const select = document.getElementById('tableSelect');
+            select.innerHTML = '';
+            const res = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';");
+
+            if (res.length === 0 || !res || !res.values) {
+                alert("The selected database file has no visible user tables.");
+                return;
+            }
+
+            res[0].values.forEach(tableRow => {
+                const tableName = tableRow[0];
+                const opt = document.createElement('option');
+                opt.value = tableName;
+                opt.textContent = tableName;
+                select.appendChild(opt);
+            });
+
+            select.disabled = false;
+            if (Array.from(select.options).some(o => o.value === 'energy')) {
+                select.value = 'energy';
+            }
+
+            currentPage = 1;
+            activeTableName = select.value;
+            loadTableData(activeTableName);
+        }
+
+        document.getElementById('tableSelect').addEventListener('change', e => {
+            currentPage = 1;
+            activeTableName = e.target.value;
+            loadTableData(activeTableName);
+        });
+
+        function updateEnergySummaryHighlights(tableName) {
+            const quietestUl = document.getElementById('quietestList');
+            const busiestUl = document.getElementById('busiestList');
+
+            if (!quietestUl || !busiestUl) return;
+
+            quietestUl.innerHTML = '';
+            busiestUl.innerHTML = '';
+
+            try {
+
+                const sqlResult = db.exec("SELECT freq_hz, n, busy_frac FROM [energy];");
+
+                if (sqlResult && sqlResult.length > 0 && sqlResult[0].values) {
+                    const columnsList = sqlResult[0].columns;
+                    const allRows = sqlResult[0].values;
+
+                    const freqIdx = columnsList.indexOf("freq_hz");
+                    const nIdx = columnsList.indexOf("n");
+                    const busyFracIdx = columnsList.indexOf("busy_frac");
+
+                    const channelData = {};
+
+                    for (let i = 0; i < allRows.length; i++) {
+                        const row = allRows[i];
+                        const freq = Number(row[freqIdx]);
+                        const nVal = Number(row[nIdx]) || 0;
+                        const busyFrac = Number(row[busyFracIdx]) || 0;
+
+                        if (isNaN(freq)) continue;
+
+                        if (!channelData[freq]) {
+                            channelData[freq] = {
+                                totalBusyUnits: 0,
+                                totalSweeps: 0,
+                                cleanEntriesCount: 0
+                            };
+                        }
+
+                        channelData[freq].totalBusyUnits += (busyFrac * nVal);
+                        channelData[freq].totalSweeps += nVal;
+
+                        if (busyFrac === 0) {
+                            channelData[freq].cleanEntriesCount += 1;
+                        }
+                    }
+
+                    const sortedChannels = [];
+                    for (const freq in channelData) {
+                        const sweeps = channelData[freq].totalSweeps;
+                        sortedChannels.push({
+                            freq_hz: Number(freq),
+                            clean_weight: channelData[freq].cleanEntriesCount,
+                            busyness_score: sweeps > 0 ? (channelData[freq].totalBusyUnits / sweeps) * 100.0 : 0.0
+                        });
+                    }
+
+                    const isHatchedExclusionZone = (freqHz) => {
+                        const freq = Number(freqHz);
+                        if (freq >= 902000000 && freq <= 903250000) return true;
+                        if (freq >= 926750000 && freq <= 928000000) return true;
+                        return false;
+                    };
+
+                    const filteredChannels = sortedChannels.filter(ch => !isHatchedExclusionZone(ch.freq_hz));
+
+                    filteredChannels.sort((a, b) => {
+                        const scoreA = Math.round(a.busyness_score);
+                        const scoreB = Math.round(b.busyness_score);
+
+                        if (scoreA === scoreB) {
+                            const isHighBandA = a.freq_hz >= 920000000;
+                            const isHighBandB = b.freq_hz >= 920000000;
+
+                            if (isHighBandA !== isHighBandB) {
+                                return isHighBandA ? -1 : 1;
+                            }
+
+                            const floatA = Number(a.busyness_score.toFixed(2));
+                            const floatB = Number(b.busyness_score.toFixed(2));
+
+                            if (Math.abs(floatA - floatB) > 0.00001) {
+                                return floatA - floatB;
+                            }
+
+                            return a.freq_hz - b.freq_hz;
+                        }
+                        return scoreA - scoreB;
+                    });
+
+                    const quietest = filteredChannels.slice(0, 5);
+                    quietest.forEach(row => {
+                        if (row) {
+                            const f = (row.freq_hz / 1000000).toFixed(1);
+                            quietestUl.innerHTML += `<li class="summary-item"><span>Channel: ${f} MHz</span> <strong>(${row.busyness_score.toFixed(0)} %)</strong></li>`;
+                        }
+                    });
+
+                    filteredChannels.sort((a, b) => {
+                        const scoreA = Math.round(a.busyness_score);
+                        const scoreB = Math.round(b.busyness_score);
+
+                        if (scoreA === scoreB) {
+                            return b.freq_hz - a.freq_hz;
+                        }
+                        return scoreB - scoreA;
+                    });
+
+                    const busiest = filteredChannels.slice(0, 5);
+                    busiest.forEach(row => {
+                        if (row) {
+                            const f = (row.freq_hz / 1000000).toFixed(1);
+                            busiestUl.innerHTML += `<li class="summary-item"><span>Channel: ${f} MHz</span> <strong>(${row.busyness_score.toFixed(0)} %)</strong></li>`;
+                        }
+                    });
+                } else {
+                    quietestUl.innerHTML = '<li>No records found.</li>';
+                    busiestUl.innerHTML = '<li>No records found.</li>';
+                }
+            } catch (err) {
+                quietestUl.innerHTML = `<li style="color:#ff6b6b;">Error: ${err.message}</li>`;
+                busiestUl.innerHTML = `<li style="color:#ff6b6b;">Metrics unavailable.</li>`;
+            }
+        }
+
+
+
+        function loadTableData(tableName) {
+            if (!db || !tableName) return;
+            const thead = document.querySelector('#dataTable thead');
+            const tbody = document.querySelector('#dataTable tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            updateEnergySummaryHighlights(tableName);
+
+            try {
+                const countRes = db.exec(`SELECT COUNT(*) FROM "${tableName}";`);
+                const totalRows = countRes[0].values[0][0];
+                const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+                const offset = (currentPage - 1) * rowsPerPage;
+
+                const stmt = db.prepare(`SELECT * FROM "${tableName}" LIMIT ${rowsPerPage} OFFSET ${offset};`);
+                const columns = stmt.getColumnNames();
+
+                const trHead = document.createElement('tr');
+                columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    trHead.appendChild(th);
+                });
+                thead.appendChild(trHead);
+
+                while (stmt.step()) {
+                    const row = stmt.getAsObject();
+                    const trBody = document.createElement('tr');
+
+                    columns.forEach(col => {
+                        const td = document.createElement('td');
+                        let val = row[col];
+
+                        if (col === 'ts' && val !== null && !isNaN(val)) {
+                            const date = new Date(Number(val) * 1000);
+                            td.textContent = date.toISOString().replace('T', ' ').substring(0, 19);
+                        } else if (col === 'freq_hz' && val !== null && !isNaN(val)) {
+                            td.textContent = (Number(val) / 1000000).toFixed(3) + ' MHz';
+                        } else if (col === 'bw_hz' && val !== null && !isNaN(val)) {
+                            td.textContent = (Number(val) / 1000).toFixed(0) + ' kHz';
+                        } else if (val === null) {
+                            td.textContent = 'NULL';
+                            td.style.color = '#555';
+                        } else if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))) {
+                            td.textContent = val;
+                            td.className = 'json-cell';
+                        } else {
+                            td.textContent = val;
+                        }
+                        trBody.appendChild(td);
+                    });
+                    tbody.appendChild(trBody);
+                }
+                stmt.free();
+
+                renderPaginationControls(totalPages, totalRows, offset);
+            } catch (err) {
+                alert("Query runtime error: " + err.message);
+            }
+        }
+
+
+        function renderPaginationControls(totalPages, totalRows, offset) {
+            let controlsWrapper = document.getElementById('paginationControls');
+            if (!controlsWrapper) {
+                controlsWrapper = document.createElement('div');
+                controlsWrapper.id = 'paginationControls';
+                controlsWrapper.style.display = 'flex';
+                controlsWrapper.style.justifyContent = 'space-between';
+                controlsWrapper.style.alignItems = 'center';
+                controlsWrapper.style.marginTop = '15px';
+                controlsWrapper.style.padding = '10px';
+                controlsWrapper.style.backgroundColor = '#2d2d2d';
+                controlsWrapper.style.borderRadius = '6px';
+                controlsWrapper.style.border = '1px solid #444';
+
+                const container = document.querySelector('.table-container');
+                container.parentNode.insertBefore(controlsWrapper, container.nextSibling);
+            }
+
+            const currentStart = totalRows === 0 ? 0 : offset + 1;
+            const currentEnd = Math.min(offset + rowsPerPage, totalRows);
+
+            controlsWrapper.innerHTML = `
+                <div style="font-size: 13px; color: #aaa;">
+                    Showing <strong>${currentStart}</strong> to <strong>${currentEnd}</strong> of <strong>${totalRows}</strong> records
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="prevPageBtn" ${currentPage === 1 ? 'disabled' : ''} style="background-color: #3d3d3d; color: #fff; border: 1px solid #555; padding: 6px 12px; border-radius: 4px; cursor: pointer; opacity: ${currentPage === 1 ? '0.5' : '1'}">Previous</button>
+                    <span style="align-self: center; font-size: 13px; color: #fff; padding: 0 5px;">Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong></span>
+                    <button id="nextPageBtn" ${currentPage === totalPages ? 'disabled' : ''} style="background-color: #3d3d3d; color: #fff; border: 1px solid #555; padding: 6px 12px; border-radius: 4px; cursor: pointer; opacity: ${currentPage === totalPages ? '0.5' : '1'}">Next</button>
+                </div>
+            `;
+
+            document.getElementById('prevPageBtn').onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadTableData(activeTableName);
+                }
+            };
+
+            document.getElementById('nextPageBtn').onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadTableData(activeTableName);
+                }
+            };
+        }
+        document.getElementById('dbFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                try {
+                    const Uints = new Uint8Array(event.target.result);
+                    db = new SQL.Database(Uints);
+                    updateEnergySummaryHighlights();
+
+                    const tableSelect = document.getElementById('tableSelect');
+                    if (tableSelect) {
+                        tableSelect.innerHTML = '';
+                        const tablesResult = db.exec("SELECT name FROM sqlite_master WHERE type='table';");
+
+                        if (tablesResult && tablesResult.length > 0 && tablesResult[0].values) {
+                            const tables = tablesResult[0].values;
+                            tables.forEach(t => {
+                                const option = document.createElement('option');
+                                option.value = t[0];
+                                option.textContent = t[0];
+                                tableSelect.appendChild(option);
+                            });
+
+                            if (tables.length > 0) {
+                                tableSelect.value = tables[0][0];
+                                if (typeof loadTableData === 'function') {
+                                    loadTableData(tables[0][0]);
+                                }
+                            }
+                        }
+                    }
+                    const statusIndicator = document.getElementById('engineStatus');
+                    if (statusIndicator) {
+                        statusIndicator.textContent = `Custom file "${file.name}" loaded successfully!`;
+                    }
+
+                } catch (err) {
+                    console.error("CRITICAL FILE READER ERROR:", err);
+                    alert("Failed to read SQLite file structure: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+
+</html>
