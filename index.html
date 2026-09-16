@@ -183,20 +183,20 @@
 
     <p>
         What is <a href="https://github.com/Loomwave/lorascan"
-            style="text-decoration:none; color:green;">LoRaScan?</a><br><br>
+            style="text-decoration:none; color:#4caf50;">LoRaScan?</a><br><br>
         Lorascan is a long-term LoRa spectrum band scanner and interference analyzer designed for the 902–928 MHz US ISM
         band.
         It runs on hardware like a Raspberry Pi or USB-SPI sticks using an actual LoRa radio to capture
         real-world interference.
         <br><br>
-        This page only parses .db files <b style="color: Green">LOCALLY</b>! No files are uploaded to this website!
+        This page only parses .db files <b style="color: #4caf50;">LOCALLY</b>! No files are uploaded to this website!
     </p>
 
     <div class="controls">
         <div id="engineStatus" class="loading">Compiling WebAssembly core components...</div>
         <br>
         <label for="dbFile" style="display:none;">Select SQLite Database File: </label>
-        <input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3" disabled>
+        <input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
 
         <label for="tableSelect">Table: </label>
         <select id="tableSelect" disabled>
@@ -284,7 +284,7 @@
                     const Uints = new Uint8Array(arrayBuffer);
                     db = new SQL.Database(Uints);
 
-                    statusIndicator.textContent = "Yoss's site.db loaded";
+                    statusIndicator.textContent = "Default site.db loaded";
 
                     const el = document.getElementById('dbFile');
                     if (el) el.disabled = false;
@@ -621,8 +621,10 @@
                             }
                         }
                     }
+                    document.getElementById('tableSelect').disabled = false;
                     const statusIndicator = document.getElementById('engineStatus');
                     if (statusIndicator) {
+                        statusIndicator.style = `color: #4caf50;`;
                         statusIndicator.textContent = `Custom file "${file.name}" loaded successfully!`;
                     }
 
